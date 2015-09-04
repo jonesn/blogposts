@@ -3,15 +3,19 @@
             [clojure.java.io   :as io]
             [clojure.pprint    :as pp]
             [clj-time.core     :as time]
+            [clj-time.format   :as format]
             [schema.core       :as s])
     (:use clj-xpath.core)
     (:import (java.io StringReader)
-             (org.joda.time DateTime))
+             (org.joda.time LocalDateTime LocalDate))
     (:gen-class))
 
 (defn string-reader
   [s]
   (StringReader. s))
+
+(def AEMO-RM16-DATE-FORMAT     (format/formatter "yyyy/MM/dd"))
+(def AEMO-RM16-DATETIME-FORMAT (format/formatter "yyyy/MM/dd HH:mm:ss"))
 
 (def rm16-doc
   (xml->doc (slurp "resources/mdmtl_contactabatch_569104818.xml")))
@@ -28,15 +32,35 @@
    lr              :- String
    mdp             :- String
    profile-name    :- String
-   creation-dt     :- DateTime
-   settlement-date :- DateTime
+   creation-dt     :- LocalDateTime
+   settlement-date :- LocalDate
    hhr-data        :- [s/Num]])
+
+(defn seq-of-bigdec
+  [row-of-strings start-pos]
+  (->> (nthrest row-of-strings start-pos)
+       (drop-last)
+       (map #(bigdec %1))))
+
+(defn data->rm16row
+  [row-of-strings]
+  (->rm16-row
+    (nth row-of-strings 0)
+    (nth row-of-strings 1)
+    (nth row-of-strings 2)
+    (nth row-of-strings 3)
+    (nth row-of-strings 4)
+    (nth row-of-strings 5)
+    (format/parse AEMO-RM16-DATETIME-FORMAT (nth row-of-strings 6))
+    (format/parse AEMO-RM16-DATE-FORMAT (nth row-of-strings 7))
+    (seq-of-bigdec row-of-strings 8)))
 
 (defn construct-data
   []
   (->>
     (map #(string/split % #",") csv-payload)
-    (map #(->rm16-row %1 %2 %3 %4 %5 %6 %7 %8 []))))
+    (rest)
+    (map #(data->rm16row %1))))
 
 (defn visit-nodes
   ([path nodes f]
