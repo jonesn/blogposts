@@ -5,7 +5,8 @@
             :url "http://www.eclipse.org/legal/epl-v10.html"}
   :dependencies [[org.clojure/clojure              "1.6.0"]
                  [com.github.kyleburton/clj-xpath  "1.4.3"]
-                 [prismatic/schema                 "0.4.3"]
+                 [prismatic/schema                 "1.0.1"]
+                 [org.clojure/tools.cli            "0.3.3"]
                  [clj-time                         "0.10.0"]]
 
   :main ^:skip-aot rm16viewer.core
