@@ -38,7 +38,15 @@
    hhr-data        :- [s/Num]])
 
 (s/defrecord RM16Summary
-  [profileToGWh      :- {:profile String :volume Number}])
+  [jurisdiction      :- String
+   profile           :- String
+   volume            :- BigDecimal])
+
+(defn rm16-summary-compare
+  [rm16-summary-a rm16-summary-b]
+  (compare
+    (str (:jurisdiction rm16-summary-a) (:profile rm16-summary-a))
+    (str (:jurisdiction rm16-summary-b) (:profile rm16-summary-b))))
 
 (defn seq-of-bigdec-from-csv-chunk
   [row-of-strings start-pos]
@@ -83,19 +91,48 @@
     (rest)
     (map #(csvdata->rm16row %1))))
 
-(defn sum-volume-for-profile
-  [profile-grouped-map-element]
-  (let [profile    (key profile-grouped-map-element)
-        sum-volume (reduce + (mapcat #(:hhr-data %1)
-                                     (val profile-grouped-map-element)))]
-    {profile sum-volume}))
+;; ====================
+;; Transformation Logic
+;; ====================
 
-(defn construct-gwh-per-profile
+(defn sum-volume-for-jurisdiction-profile
+  [rm16-summary-to-row-seq]
+  (let [sum-volume   (/ (reduce +
+                                (mapcat #(:hhr-data %1)
+                                        (val rm16-summary-to-row-seq)))
+                        1000)]
+    (s/validate RM16Summary
+      (->RM16Summary (:jurisdiction (key rm16-summary-to-row-seq))
+                     (:profile      (key rm16-summary-to-row-seq))
+                     sum-volume))))
+
+(defn jurisdiction-profile-key
+  [rm16-row]
+  (let [tni-lead-char (str (first (:tni rm16-row)))
+        profile       (:profile-name rm16-row)
+        jurisdiction (case tni-lead-char
+                       "V" "VIC"
+                       "N" "NSW"
+                       "A" "ACT"
+                       "Q" "QLD"
+                       "S" "SA")]
+    (->RM16Summary jurisdiction profile 0)))
+
+(defn construct-mwh-per-jurisdiction-per-profile
   [seq-of-rm16row]
   (->>
-    (group-by #(:profile-name %1) seq-of-rm16row)
-    (map      #(sum-volume-for-profile %1))
-    (reduce   merge)))
+    (group-by #(jurisdiction-profile-key %1) seq-of-rm16row)
+    (map      #(sum-volume-for-jurisdiction-profile   %1))))
+
+(defn print-summary
+  [seq-of-rm16-summary]
+  (let [total-volume (reduce + (map #(:volume %) seq-of-rm16-summary))]
+    (doseq [summary seq-of-rm16-summary]
+      (printf "Jurisdiction: %5s   Profile: %12s   Volume MWh: %13s \n"
+              (:jurisdiction summary)
+              (:profile       summary)
+              (:volume        summary)))
+    (printf "Total MWh: %10s" total-volume)))
 
 (defn process-file
   [file-path]
@@ -103,7 +140,9 @@
     (parse-rm16-doc file-path)
     (extract-csv-payload)
     (construct-rm16-data)
-    (construct-gwh-per-profile)))
+    (construct-mwh-per-jurisdiction-per-profile)
+    (sort rm16-summary-compare)
+    (print-summary)))
 
 ;; =====================
 ;; Command Line and Main
