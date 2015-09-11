@@ -37,6 +37,7 @@
    settlement-date :- LocalDate
    hhr-data        :- [s/Num]])
 
+;; The summary data to be printed.
 (s/defrecord RM16Summary
   [jurisdiction      :- String
    profile           :- String
@@ -52,7 +53,7 @@
   [row-of-strings start-pos]
   (->> (nthrest row-of-strings start-pos)
        (drop-last)
-       (map #(bigdec %1))))
+       (map bigdec)))
 
 (defn csvdata->rm16row
   [row-of-strings]
@@ -98,7 +99,7 @@
 (defn sum-volume-for-jurisdiction-profile
   [rm16-summary-to-row-seq]
   (let [sum-volume   (/ (reduce +
-                                (mapcat #(:hhr-data %1)
+                                (mapcat :hhr-data
                                         (val rm16-summary-to-row-seq)))
                         1000)]
     (s/validate RM16Summary
@@ -121,8 +122,8 @@
 (defn construct-mwh-per-jurisdiction-per-profile
   [seq-of-rm16row]
   (->>
-    (group-by #(jurisdiction-profile-key %1) seq-of-rm16row)
-    (map      #(sum-volume-for-jurisdiction-profile   %1))))
+    (group-by jurisdiction-profile-key seq-of-rm16row)
+    (map      sum-volume-for-jurisdiction-profile)))
 
 (defn print-summary
   [seq-of-rm16-summary]
