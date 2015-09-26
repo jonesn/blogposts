@@ -1,22 +1,25 @@
 (ns rm16viewer.core
   (:require [clojure.string    :as string]
             [clojure.java.io   :as io]
-            [clojure.pprint    :as pp]
             [clj-time.format   :as format]
             [schema.core       :as s]
             [clojure.tools.cli :refer [parse-opts]])
     (:use clj-xpath.core)
-    (:import (java.io StringReader)
+    (:import (java.io StringReader File)
              (org.joda.time LocalDateTime LocalDate))
     (:gen-class))
 
-;; =========
-;; Constants
-;; =========
+;; =====================
+;; Constants and Helpers
+;; =====================
 
 (defn string-reader
   [s]
   (StringReader. s))
+
+(defn file-exists?
+  [path]
+  (.exists (File. path)))
 
 (def AEMO-RM16-DATE-FORMAT     (format/formatter "yyyy/MM/dd"))
 (def AEMO-RM16-DATETIME-FORMAT (format/formatter "yyyy/MM/dd HH:mm:ss"))
@@ -77,7 +80,11 @@
 
 (defn parse-rm16-doc
   [file-path]
-  (xml->doc (slurp file-path)))
+  (if (file-exists? file-path)
+    (xml->doc (slurp file-path))
+    (do
+      (println (str "File " file-path " not found."))
+      nil)))
 
 (defn extract-csv-payload
   [rm16-doc]
@@ -137,7 +144,7 @@
 
 (defn process-file
   [file-path]
-  (->>
+  (some->>
     (parse-rm16-doc file-path)
     (extract-csv-payload)
     (construct-rm16-data)
