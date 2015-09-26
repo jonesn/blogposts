@@ -145,6 +145,7 @@
 
 (defn process-file
   [file-path]
+  ;; Some will continue to thread for non nil values
   (some->>
     (parse-rm16-doc file-path)
     (extract-csv-payload)
