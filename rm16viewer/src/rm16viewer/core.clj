@@ -140,7 +140,8 @@
               (:jurisdiction summary)
               (:profile       summary)
               (:volume        summary)))
-    (printf "Total MWh: %10s" total-volume)))
+    (printf "Total MWh: %10s" total-volume)
+    (flush)))
 
 (defn process-file
   [file-path]
