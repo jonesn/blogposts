@@ -97,7 +97,7 @@
   (->>
     (map #(string/split % #",") csv-payload)
     (rest)
-    (map #(csvdata->rm16row %1))))
+    (map csvdata->rm16row)))
 
 ;; ====================
 ;; Transformation Logic
@@ -134,10 +134,10 @@
 
 (defn print-summary
   [seq-of-rm16-summary]
-  (let [total-volume (reduce + (map #(:volume %) seq-of-rm16-summary))]
+  (let [total-volume (reduce + (map :volume seq-of-rm16-summary))]
     (doseq [summary seq-of-rm16-summary]
       (printf "Jurisdiction: %5s   Profile: %12s   Volume MWh: %13s \n"
-              (:jurisdiction summary)
+              (:jurisdiction  summary)
               (:profile       summary)
               (:volume        summary)))
     (printf "Total MWh: %10s" total-volume)
